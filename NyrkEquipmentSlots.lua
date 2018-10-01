@@ -245,7 +245,6 @@ local function InitializeSlots(frame)
             itemSlotText:SetFont(unpack(itemSlotFont))
             itemSlotText:SetVertexColor(unpack(itemSlotLevelTextColor))
 
-            local slotId = GetInventorySlotInfo(slotName)
             local textSide = sides[slot.textSide]
             itemSlotText:SetPoint(textSide.point[1], slotFrame, textSide.point[2], textSide.point[3], textSide.point[4])
             itemSlotText:SetJustifyH(textSide.justifyH)
