@@ -13,6 +13,11 @@ local ENCHANTMENT_TEXTURE = "Interface\\ICONS\\Trade_Engraving"
 local itemSlotFont = { STANDARD_TEXT_FONT, 10, "OUTLINE" }
 local itemSlotLevelTextColor = { 0.8, 0.8, 0.8 }
 
+local frameSlotPrefixes = {
+    ["PaperDollItemsFrame"] = "Character",
+    ["InspectPaperDollItemsFrame"] = "Inspect",
+}
+
 local slots = {
     ["HeadSlot"] = {
         textSide = "right"
@@ -122,7 +127,7 @@ local function HasEnchantment(itemLink)
     end
 end
 
-local function UpdateItemSlot(self)
+local function UpdateItemSlot(self, unit)
 
     if (not self.NyrkItemSlotText) then return end
 
@@ -134,13 +139,20 @@ local function UpdateItemSlot(self)
         icons[i]:Hide()
     end
 
-    local itemLink = GetInventoryItemLink("player", self:GetID())
+    local itemLink = GetInventoryItemLink(unit, self:GetID())
 
     if (itemLink) then
 
-        local item = Item:CreateFromEquipmentSlot(self:GetID())
-        local ilevel = item:GetCurrentItemLevel()
+        local item
+        if (unit == "player") then
+            item = Item:CreateFromEquipmentSlot(self:GetID())
+        else
+            -- Item not created from location doesn't always return correct ilvl
+            item = Item:CreateFromItemLink(itemLink)
+        end
 
+        local ilevel = item:GetCurrentItemLevel()
+        
         if (ilevel and ilevel > 1) then
             iLvlText = ilevel
         end
@@ -150,7 +162,7 @@ local function UpdateItemSlot(self)
 
         local enchanted = HasEnchantment(itemLink)
         local isMissingEnchantment = self.nyrkCheckEnchant and not enchanted and
-                                     equipLoc ~= "INVTYPE_HOLDABLE" and UnitLevel("player") >= CHECK_ENCHANT_LEVEL
+                                     equipLoc ~= "INVTYPE_HOLDABLE" and UnitLevel(unit) >= CHECK_ENCHANT_LEVEL
         local hasEnchantmentIcon = enchanted or isMissingEnchantment
         
         local socketCount, gem1, gem2, gem3 = GetSockets(itemLink)
@@ -209,19 +221,23 @@ local function UpdateItemSlot(self)
     iLvlFontString:SetText(iLvlText)
 end
 
-local function UpdateItemSlots(unit)
+local function UpdateItemSlots(frame, unit)
+
+    local slotNamePrefix = frameSlotPrefixes[frame:GetName()]
 
     for slotName, slot in pairs(slots) do
-        local slotFrame = _G["Character"..slotName]
-        UpdateItemSlot(slotFrame)
+        local slotFrame = _G[slotNamePrefix..slotName]
+        UpdateItemSlot(slotFrame, unit)
     end
 end
 
-local function InitializeSlots()
+local function InitializeSlots(frame)
+
+    local slotNamePrefix = frameSlotPrefixes[frame:GetName()]
 
     for slotName, slot in pairs(slots) do
 
-        local slotFrame = _G["Character"..slotName]
+        local slotFrame = _G[slotNamePrefix..slotName]
 
         if (slotName ~= "ShirtSlot" and slotName ~= "TabardSlot") then
 
@@ -258,32 +274,66 @@ local function InitializeSlots()
             end
 
             slotFrame.nyrkItemEnhancementIcons = icons
-
-            UpdateItemSlot(slotFrame)
         end
     end
 end
-InitializeSlots()
 
-PaperDollItemsFrame:HookScript("OnShow", function()
-    UpdateItemSlots("player")
-end)
+local function InitializeCharacterFrame()
+
+    InitializeSlots(PaperDollItemsFrame)
+
+    PaperDollItemsFrame:HookScript("OnShow", function()
+        UpdateItemSlots(PaperDollItemsFrame, "player")
+    end)
+end
+
+local function InitializeInspectFrame()
+
+    InitializeSlots(InspectPaperDollItemsFrame)
+
+    InspectPaperDollItemsFrame:HookScript("OnShow", function()
+        UpdateItemSlots(InspectPaperDollItemsFrame, InspectFrame.unit)
+    end)
+end
+
 
 local eventFrame = CreateFrame("Frame")
 local events = {}
 
+function events:PLAYER_LOGIN()
+    
+    InitializeCharacterFrame()
+    eventFrame:UnregisterEvent("PLAYER_LOGIN")
+
+    if (IsAddOnLoaded("Blizzard_InspectUI")) then
+        InitializeInspectFrame()
+        eventFrame:UnregisterEvent("ADDON_LOADED")
+    end
+end
+function events:ADDON_LOADED(addon)
+    
+    if (addon == "Blizzard_InspectUI") then
+        InitializeInspectFrame()
+        eventFrame:UnregisterEvent("ADDON_LOADED")
+    end
+end
 function events:PLAYER_EQUIPMENT_CHANGED()
     
     if (PaperDollItemsFrame:IsVisible()) then
-        UpdateItemSlots("player")
+        UpdateItemSlots(PaperDollItemsFrame, "player")
     end
 end
--- function events:UNIT_INVENTORY_CHANGED(unit)
+function events:UNIT_INVENTORY_CHANGED(unit)
 
---     if (unit == "player" and PaperDollItemsFrame:IsVisible()) then
---         UpdateItemSlots("player")
---     end
--- end
+    if (not InspectFrame) then return end
+
+    if (InspectPaperDollItemsFrame:IsVisible() and unit == InspectFrame.unit) then
+        UpdateItemSlots(InspectPaperDollItemsFrame, unit)
+    end
+end
+function events:INSPECT_READY()
+    events:UNIT_INVENTORY_CHANGED(InspectFrame.unit)
+end
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     events[event](self, ...)
