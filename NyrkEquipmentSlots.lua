@@ -144,7 +144,8 @@ local function UpdateItemSlot(self, unit)
     if (itemLink) then
 
         local item
-        if (unit == "player") then
+
+        if (UnitIsUnit(unit, "player")) then
             item = Item:CreateFromEquipmentSlot(self:GetID())
         else
             -- Item not created from location doesn't always return correct ilvl
@@ -321,10 +322,18 @@ function events:PLAYER_EQUIPMENT_CHANGED()
     if (PaperDollItemsFrame:IsVisible()) then
         UpdateItemSlots(PaperDollItemsFrame, "player")
     end
+
+    -- PLAYER_EQUIPMENT_CHANGED is more accurate than UNIT_INVENTORY_CHANGED, so update self inspect here.
+    -- UNIT_INVENTORY_CHANGED doesn't seem to fire when switching an item with the same item,
+    -- even if their stats are different.
+    if (InspectFrame and InspectPaperDollItemsFrame:IsVisible() and UnitIsUnit(InspectFrame.unit, "player")) then
+        UpdateItemSlots(InspectPaperDollItemsFrame, "player")
+    end
 end
 function events:UNIT_INVENTORY_CHANGED(unit)
 
-    if (not InspectFrame) then return end
+    -- Player is updated in PLAYER_EQUIPMENT_CHANGED
+    if (UnitIsUnit(unit, "player") or not InspectFrame) then return end
 
     if (InspectPaperDollItemsFrame:IsVisible() and unit == InspectFrame.unit) then
         UpdateItemSlots(InspectPaperDollItemsFrame, unit)
