@@ -1,0 +1,6 @@
+## Interface: 80000
+## Title: Nyrk |cffff5100EquipmentSlots|r
+## Author: Kava
+## Notes: Improvements to character equipment slots
+
+NyrkEquipmentSlots.lua
