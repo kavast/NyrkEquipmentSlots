@@ -9,6 +9,7 @@ local CHECK_ENCHANT_LEVEL = 120
 local NUM_ENHANCEMENT_ICONS = MAX_NUM_SOCKETS + 1
 local GEM_SLOT_TEXTURE = "Interface\\ITEMSOCKETINGFRAME\\UI-EmptySocket-Prismatic"
 local ENCHANTMENT_TEXTURE = "Interface\\ICONS\\Trade_Engraving"
+local OVERLAY_TEXTURE = "Interface\\AddOns\\"..addonName.."\\IconOverlay"
 
 local itemSlotFont = { STANDARD_TEXT_FONT, 10, "OUTLINE" }
 local itemSlotLevelTextColor = { 0.8, 0.8, 0.8 }
@@ -180,12 +181,13 @@ local function UpdateItemSlot(self, unit)
             
             local enchantmentIcon = self.nyrkItemEnhancementIcons[1]
             
-            enchantmentIcon:SetTexture("Interface\\ICONS\\Trade_Engraving")
+            enchantmentIcon.Icon:SetTexture("Interface\\ICONS\\Trade_Engraving")
             if (isMissingEnchantment) then
-                enchantmentIcon:SetVertexColor(1, 0.5, 0.5, 1)
+                enchantmentIcon.Icon:SetVertexColor(1, 0.5, 0.5, 1)
             else
-                enchantmentIcon:SetVertexColor(1, 1, 1, 1)
+                enchantmentIcon.Icon:SetVertexColor(1, 1, 1, 1)
             end
+            enchantmentIcon.IconOverlay:SetShown(isMissingEnchantment)
             
             enchantmentIcon:Show()
         end
@@ -196,24 +198,27 @@ local function UpdateItemSlot(self, unit)
             local iconIndex = (hasEnchantmentIcon and 2 or 1)
 
             local gemIcon = self.nyrkItemEnhancementIcons[iconIndex]
-            gemIcon:SetTexture(gem1 and GetItemIcon(gem1) or GEM_SLOT_TEXTURE)
+            gemIcon.Icon:SetTexture(gem1 and GetItemIcon(gem1) or GEM_SLOT_TEXTURE)
             gemIcon:Show()
+            gemIcon.IconOverlay:SetShown(not gem1)
 
             if (socketCount > 1) then
 
                 iconIndex = iconIndex + 1
 
                 gemIcon = self.nyrkItemEnhancementIcons[iconIndex]
-                gemIcon:SetTexture(gem2 and GetItemIcon(gem2) or GEM_SLOT_TEXTURE)
+                gemIcon.Icon:SetTexture(gem2 and GetItemIcon(gem2) or GEM_SLOT_TEXTURE)
                 gemIcon:Show()
+                gemIcon.IconOverlay:SetShown(not gem2)
 
                 if (socketCount > 2) then
 
                     iconIndex = iconIndex + 1
 
                     gemIcon = self.nyrkItemEnhancementIcons[iconIndex]
-                    gemIcon:SetTexture(gem2 and GetItemIcon(gem2) or GEM_SLOT_TEXTURE)
+                    gemIcon.Icon:SetTexture(gem2 and GetItemIcon(gem3) or GEM_SLOT_TEXTURE)
                     gemIcon:Show()
+                    gemIcon.IconOverlay:SetShown(not gem3)
                 end
             end
         end
@@ -230,6 +235,54 @@ local function UpdateItemSlots(frame, unit)
         local slotFrame = _G[slotNamePrefix..slotName]
         UpdateItemSlot(slotFrame, unit)
     end
+end
+
+local function CreateItemEnhancementIcon(slotFrame)
+    
+    local enhancementIcon = CreateFrame("Frame", nil, slotFrame)
+    enhancementIcon:SetSize(12, 12)
+
+    local icon = enhancementIcon:CreateTexture()
+    icon:SetTexture(GEM_SLOT_TEXTURE)
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    icon:SetAllPoints()
+    enhancementIcon.Icon = icon
+
+    local overlay = enhancementIcon:CreateTexture(nil, "OVERLAY")
+    overlay:SetTexture(OVERLAY_TEXTURE)
+    overlay:SetSize(16, 16)
+    overlay:SetPoint("CENTER")
+    overlay:SetVertexColor(1, 0, 0, 1)
+    overlay:SetBlendMode("ADD")
+    overlay:Hide()
+    enhancementIcon.IconOverlay = overlay
+
+    -- ANIMATION
+    overlay.AnimationGroup = overlay:CreateAnimationGroup()
+    overlay.AnimationGroup:SetLooping("REPEAT")
+
+    local scaleAnim = overlay.AnimationGroup:CreateAnimation("Scale")
+    scaleAnim:SetScale(1.5, 1.5)
+    scaleAnim:SetDuration(1.25)
+    scaleAnim:SetSmoothing("OUT")
+
+    local alphaAnim = overlay.AnimationGroup:CreateAnimation("Alpha")
+    alphaAnim:SetFromAlpha(1)
+    alphaAnim:SetToAlpha(0)
+    alphaAnim:SetDuration(1.15)
+    alphaAnim:SetStartDelay(0.1)
+
+    hooksecurefunc(overlay, "SetShown", function(shown)
+        if (shown) then
+            if (not overlay.AnimationGroup:IsPlaying()) then
+                overlay.AnimationGroup:Play()
+            end
+        else
+            overlay.AnimationGroup:Stop()
+        end
+    end)
+
+    return enhancementIcon
 end
 
 local function InitializeSlots(frame)
@@ -259,11 +312,8 @@ local function InitializeSlots(frame)
             local icons = {}
             for i = 1, NUM_ENHANCEMENT_ICONS do
 
-                local icon = slotFrame:CreateTexture()
-                icon:SetTexture("Interface\\ITEMSOCKETINGFRAME\\UI-EmptySocket-Prismatic")
-                icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                icon:SetSize(12, 12)
-
+                local icon = CreateItemEnhancementIcon(slotFrame)
+                
                 if (i == 1) then
                     icon:SetPoint(textSide.point[1], slotFrame, textSide.point[2], textSide.iconX, -iconYOffset)
                 else
