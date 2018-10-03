@@ -79,6 +79,8 @@ local slots = {
         textSide = "left"
     }
 }
+local paperDollSlots = {}
+local inspectPaperDollSlots = {}
 
 local sides = {
     right = {
@@ -292,9 +294,20 @@ local function InitializeSlots(frame)
 
     local slotNamePrefix = frameSlotPrefixes[frame:GetName()]
 
+    -- ID to slot table
+    local slotFrameTable
+    if (frame == PaperDollItemsFrame) then
+        slotFrameTable = paperDollSlots
+    elseif (frame == InspectPaperDollItemsFrame) then
+        slotFrameTable = inspectPaperDollSlots
+    end
+
     for slotName, slot in pairs(slots) do
 
         local slotFrame = _G[slotNamePrefix..slotName]
+
+        local id = GetInventorySlotInfo(slotName)
+        slotFrameTable[id] = slotFrame
 
         if (slotName ~= "ShirtSlot" and slotName ~= "TabardSlot") then
 
@@ -363,6 +376,7 @@ function events:PLAYER_LOGIN()
         eventFrame:UnregisterEvent("ADDON_LOADED")
     end
 end
+
 function events:ADDON_LOADED(addon)
     
     if (addon == "Blizzard_InspectUI") then
@@ -370,30 +384,34 @@ function events:ADDON_LOADED(addon)
         eventFrame:UnregisterEvent("ADDON_LOADED")
     end
 end
-function events:PLAYER_EQUIPMENT_CHANGED()
-    
+
+-- UNIT_INVENTORY_CHANGED doesn't fire when switching an item with the same item, even if their item levels are different.
+-- This is a workaround for the player unit. It appears other units can't be fixed, but they aren't as critical anyway.
+function events:PLAYER_EQUIPMENT_CHANGED(slotId)
+
     if (PaperDollItemsFrame:IsVisible()) then
-        UpdateItemSlots(PaperDollItemsFrame, "player")
+        UpdateItemSlot(paperDollSlots[slotId], "player")
     end
 
-    -- PLAYER_EQUIPMENT_CHANGED is more accurate than UNIT_INVENTORY_CHANGED, so update self inspect here.
-    -- UNIT_INVENTORY_CHANGED doesn't seem to fire when switching an item with the same item,
-    -- even if their stats are different.
     if (InspectFrame and InspectPaperDollItemsFrame:IsVisible() and UnitIsUnit(InspectFrame.unit, "player")) then
-        UpdateItemSlots(InspectPaperDollItemsFrame, "player")
+        UpdateItemSlot(inspectPaperDollSlots[slotId], "player")
     end
 end
+
 function events:UNIT_INVENTORY_CHANGED(unit)
 
-    -- Player is updated in PLAYER_EQUIPMENT_CHANGED
-    if (UnitIsUnit(unit, "player") or not InspectFrame) then return end
+    if (PaperDollItemsFrame:IsVisible() and unit == "player") then
+        UpdateItemSlots(PaperDollItemsFrame, unit)
+    end
 
-    if (InspectPaperDollItemsFrame:IsVisible() and unit == InspectFrame.unit) then
+    if (InspectFrame and InspectPaperDollItemsFrame:IsVisible() and unit == InspectFrame.unit) then
         UpdateItemSlots(InspectPaperDollItemsFrame, unit)
     end
 end
+
 function events:INSPECT_READY()
-    events:UNIT_INVENTORY_CHANGED(InspectFrame.unit)
+
+    UpdateItemSlots(InspectPaperDollItemsFrame, InspectFrame.unit)
 end
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
