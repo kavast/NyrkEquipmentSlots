@@ -237,6 +237,17 @@ local function UpdateItemSlots(frame, unit)
     end
 end
 
+local function IconOverlaySetPlaying(self, play)
+
+    if (play) then
+        if (not self.AnimationGroup:IsPlaying()) then
+            self.AnimationGroup:Play()
+        end
+    else
+        self.AnimationGroup:Stop()
+    end
+end
+
 local function CreateItemEnhancementIcon(slotFrame)
     
     local enhancementIcon = CreateFrame("Frame", nil, slotFrame)
@@ -272,15 +283,7 @@ local function CreateItemEnhancementIcon(slotFrame)
     alphaAnim:SetDuration(1.15)
     alphaAnim:SetStartDelay(0.1)
 
-    hooksecurefunc(overlay, "SetShown", function(shown)
-        if (shown) then
-            if (not overlay.AnimationGroup:IsPlaying()) then
-                overlay.AnimationGroup:Play()
-            end
-        else
-            overlay.AnimationGroup:Stop()
-        end
-    end)
+    hooksecurefunc(overlay, "SetShown", IconOverlaySetPlaying)
 
     return enhancementIcon
 end
