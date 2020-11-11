@@ -104,13 +104,17 @@ local function GetGemID(itemLink, gemIndex)
     return gemLink and gemLink:match("item:(%d+)") or nil
 end
 
+local statTable = {}
 local function GetSockets(itemLink)
 
-    local stats = GetItemStats(itemLink)
+    statTable.EMPTY_SOCKET_PRISMATIC = nil
+    GetItemStats(itemLink, statTable)
 
-    if (not stats) then return nil end
+    local socketCount = statTable.EMPTY_SOCKET_PRISMATIC or 0
 
-    local socketCount = stats.EMPTY_SOCKET_PRISMATIC or 0
+    if (socketCount == 0) then
+        return 0
+    end
 
     local gem1 = GetGemID(itemLink, 1)
     local gem2 = GetGemID(itemLink, 2)
@@ -142,14 +146,19 @@ local function UpdateItemSlot(self, unit)
         icons[i]:Hide()
     end
 
-    local itemLink = GetInventoryItemLink(unit, self:GetID())
+    local itemLink = nil
+    local id = self:GetID()
+
+    if id then
+        itemLink = GetInventoryItemLink(unit, id)
+    end
 
     if (itemLink) then
 
-        local item
+        local item = nil
 
         if (UnitIsUnit(unit, "player")) then
-            item = Item:CreateFromEquipmentSlot(self:GetID())
+            item = Item:CreateFromEquipmentSlot(id)
         else
             -- Item not created from location doesn't always return correct ilvl
             item = Item:CreateFromItemLink(itemLink)
@@ -161,7 +170,7 @@ local function UpdateItemSlot(self, unit)
             iLvlText = ilevel
         end
 
-        -- get equip location for excluding off-hand
+        -- Get equip location for excluding off-hand
         local equipLoc = select(9, GetItemInfo(itemLink))
 
         local enchanted = HasEnchantment(itemLink)
@@ -410,6 +419,8 @@ function events:UNIT_INVENTORY_CHANGED(unit)
 end
 
 function events:INSPECT_READY()
+
+    if (not InspectFrame) then return end
 
     UpdateItemSlots(InspectPaperDollItemsFrame, InspectFrame.unit)
 end
