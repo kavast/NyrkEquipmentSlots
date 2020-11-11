@@ -1,5 +1,5 @@
-## Interface: 80000
-## Title: Nyrk |cffff5100EquipmentSlots|r
+## Interface: 90001
+## Title: Nyrk |cffff5100Equipment Slots|r
 ## Author: Kava
 ## Notes: Improvements to character equipment slots
 

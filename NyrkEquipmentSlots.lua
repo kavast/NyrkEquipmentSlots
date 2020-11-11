@@ -4,7 +4,7 @@ local addonName, addonTable = ...
 local select, pairs = select, pairs
 
 -- Level at which missing enchants will be shown as a red icon
-local CHECK_ENCHANT_LEVEL = 120
+local CHECK_ENCHANT_LEVEL = 50
 
 local NUM_ENHANCEMENT_ICONS = MAX_NUM_SOCKETS + 1
 local GEM_SLOT_TEXTURE = "Interface\\ITEMSOCKETINGFRAME\\UI-EmptySocket-Prismatic"
